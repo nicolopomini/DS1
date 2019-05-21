@@ -1,0 +1,21 @@
+apply plugin: 'java'
+apply plugin: 'idea'
+apply plugin: 'application'
+
+repositories {
+    mavenCentral()
+    mavenLocal()
+}
+
+dependencies {
+    compile group: 'com.typesafe.akka', name: 'akka-actor_2.12', version: '2.5.22'
+}
+
+compileJava {
+    options.compilerArgs += ["-Xlint:deprecation"]
+}
+mainClassName = "it.unitn.disi.ds1.martini_pomini.Main"
+
+run {
+    standardInput = System.in
+}
