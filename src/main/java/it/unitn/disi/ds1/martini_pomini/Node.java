@@ -7,6 +7,7 @@ package it.unitn.disi.ds1.martini_pomini;
 import akka.actor.AbstractActor;
 import akka.actor.ActorRef;
 import akka.actor.Props;
+import it.unitn.disi.ds1.martini_pomini.Message.Enter;
 import it.unitn.disi.ds1.martini_pomini.Message.Priviledge;
 import it.unitn.disi.ds1.martini_pomini.Message.Request;
 import java.util.ArrayList;
@@ -15,8 +16,6 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Queue;
 import java.util.Random;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 /**
  *
@@ -26,12 +25,12 @@ public class Node extends AbstractActor {
     // variables for the protocol
     private ActorRef holder;
     private boolean using, asked;
-    private Queue<ActorRef> request_q;
+    private final Queue<ActorRef> request_q;
     
     //variables for the structure
     private final int id;
     private final List<ActorRef> neighbours;
-    private Random random;
+    private final Random random;
 
     public Node(int id, ActorRef[] neighbours) {
         this.id = id;
@@ -110,7 +109,7 @@ public class Node extends AbstractActor {
     }
     
     /*----------------------NODE'S MESSAGE HANDLERS---------------------------*/
-    private void enterCS() {
+    private void enterCS(Enter msg) {
         /**
          * To enter the CS, the node enqueues itself in its request list
          * Then it tries to enter, in case it is the holder
@@ -122,7 +121,7 @@ public class Node extends AbstractActor {
         this.makeRequest();
     }
     
-    private void handleRequestMessage() {
+    private void handleRequestMessage(Request msg) {
         /**
          * The node receives a Request message
          * the sender is added in the queue
@@ -133,15 +132,31 @@ public class Node extends AbstractActor {
         this.makeRequest();
     }
     
-    private void handlePriviledgeMessage() {
-        
+    private void handlePriviledgeMessage(Priviledge msg) {
+        /**
+         * The node becomes the holder
+         */
+        this.holder = getSelf();
+        this.assignPriviledge();
+        this.makeRequest();
     }
     
-    private void exitCS() {}
+    private void exitCS() {
+        /**
+         * The node exits the CS. The priviledge is passed to another node
+         */
+        this.using = false;
+        this.assignPriviledge();
+        this.makeRequest();
+    }
 
     @Override
     public Receive createReceive() {
-        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+        return receiveBuilder()
+                .match(Priviledge.class, this::handlePriviledgeMessage)
+                .match(Request.class, this::handleRequestMessage)
+                .match(Enter.class, this::enterCS)
+                .build();
     }
     
     

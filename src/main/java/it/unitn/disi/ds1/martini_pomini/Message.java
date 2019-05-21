@@ -17,4 +17,7 @@ public class Message {
     
     // Message to request the token
     public static class Request implements Serializable {}
+    
+    // Message to request a node to enter the CS
+    public static class Enter implements Serializable {}
 }
