@@ -17,6 +17,7 @@ import it.unitn.disi.ds1.martini_pomini.Message.Startup;
  */
 public class Main {
     public static void main(String[] a) {
+        /*
         final ActorSystem system = ActorSystem.create("ds1project");
         List<ActorRef> group = new ArrayList<>();
         group.add(system.actorOf(Node.props(0)));
@@ -33,6 +34,8 @@ public class Main {
         group.get(1).tell(start1, null);
         
         group.get(0).tell(new Message.Inject(), null);
+        */
+        Manager manager = new Manager();
         
     }
 }
