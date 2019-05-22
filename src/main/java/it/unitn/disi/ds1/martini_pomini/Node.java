@@ -8,10 +8,12 @@ import akka.actor.AbstractActor;
 import akka.actor.ActorRef;
 import akka.actor.Props;
 import it.unitn.disi.ds1.martini_pomini.Message.Enter;
+import it.unitn.disi.ds1.martini_pomini.Message.Inject;
 import it.unitn.disi.ds1.martini_pomini.Message.Priviledge;
 import it.unitn.disi.ds1.martini_pomini.Message.Request;
+import it.unitn.disi.ds1.martini_pomini.Message.Spread;
+import it.unitn.disi.ds1.martini_pomini.Message.Startup;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Queue;
@@ -32,19 +34,19 @@ public class Node extends AbstractActor {
     private final List<ActorRef> neighbours;
     private final Random random;
 
-    public Node(int id, ActorRef[] neighbours) {
+    public Node(int id) {
         this.id = id;
         this.holder = null;
         this.request_q = new LinkedList<>();
         this.neighbours = new ArrayList<>();
-        this.neighbours.addAll(Arrays.asList(neighbours));
         this.using = false;
         this.asked = false;
         this.random = new Random();
+        System.out.println("Node " + this.id + " started");
     }
     
-    static public Props props(int id, ActorRef[] neighbours) {
-        return Props.create(Node.class, () -> new Node(id, neighbours));
+    static public Props props(int id) {
+        return Props.create(Node.class, () -> new Node(id));
     }
 
     @Override
@@ -107,8 +109,9 @@ public class Node extends AbstractActor {
             this.asked = true;
         }
     }
-    
+        
     /*----------------------NODE'S MESSAGE HANDLERS---------------------------*/
+    
     private void enterCS(Enter msg) {
         /**
          * To enter the CS, the node enqueues itself in its request list
@@ -149,6 +152,37 @@ public class Node extends AbstractActor {
         this.assignPriviledge();
         this.makeRequest();
     }
+    
+    private void handleStartup(Startup msg) {
+        /**
+         * Message received on startup, to get the list of neighbours
+         */
+        msg.neighbours.forEach((n) -> { 
+            this.neighbours.add(n);
+        });
+        System.out.println("Node " + this.id + ": startup received. " + this.toString());
+    }
+    
+    private void receiveToken(Inject msg) {
+        /**
+         * The app manager injects the token in this node
+         */
+        this.holder = getSelf();
+        // inform all the neighbours
+        this.neighbours.forEach((n) -> {
+            n.tell(new Spread(), getSelf());
+        });
+        System.out.println("Node " + this.id + ": token received from manager. Node " + this.id + " now holds the token.");
+    }
+    
+    private void getHolderInformation(Spread msg) {
+        this.holder = getSender();
+        this.neighbours.forEach((n) -> {
+            if (!n.equals(this.holder))
+                n.tell(new Spread(), getSelf());
+        });
+        System.out.println("Node " + this.id + ": token info received from another node. The holder for node " + this.id + " is " + this.holder);
+    }
 
     @Override
     public Receive createReceive() {
@@ -156,6 +190,9 @@ public class Node extends AbstractActor {
                 .match(Priviledge.class, this::handlePriviledgeMessage)
                 .match(Request.class, this::handleRequestMessage)
                 .match(Enter.class, this::enterCS)
+                .match(Startup.class, this::handleStartup)
+                .match(Inject.class, this::receiveToken)
+                .match(Spread.class, this::getHolderInformation)
                 .build();
     }
     
