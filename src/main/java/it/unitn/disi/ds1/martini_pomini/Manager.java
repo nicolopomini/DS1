@@ -98,12 +98,14 @@ public class Manager {
         this.nodes.get(node).tell(new Inject(), null);
     }
     
-    public void requestCS(int node) {
-        if (node < 0 || node >= this.nodes.size()) {
-            System.err.println("Fatal, the node does not exist");
-            System.exit(1);
+    public void requestCS(int[] nodes) {
+        for(int node: nodes) {
+            if (node < 0 || node >= this.nodes.size()) {
+                System.err.println("Fatal, the node does not exist");
+                System.exit(1);
+            }
+            this.nodes.get(node).tell(new Enter(), null);
         }
-        this.nodes.get(node).tell(new Enter(), null);
     }
     
     public void requestStatus() {
@@ -118,7 +120,7 @@ public class Manager {
         this.printCommands();
         while(goOn) {
             System.out.println("Type a command:");
-            String command = in.next();
+            String command = in.nextLine();
             switch(command) {
                 case Manager.COMMAND_EXIT:
                     goOn = false;
@@ -128,13 +130,17 @@ public class Manager {
                     break;
                 case Manager.COMMAND_INJECT:
                     System.out.println("Select the node to be injected [from 0 to " + (this.nodes.size() - 1) + "]");
-                    String node = in.next();
+                    String node = in.nextLine();
                     this.injectToken(Integer.parseInt(node));
                     break;
                 case Manager.COMMAND_REQUEST:
-                    System.out.println("Select the node that wants to enter the CS [from 0 to " + (this.nodes.size() - 1) + "]");
-                    String n = in.next();
-                    this.requestCS(Integer.parseInt(n));
+                    System.out.println("Select the nodes that wants to enter the CS [from 0 to " + (this.nodes.size() - 1) + "]. Separate them by a space [es. \"0 1 3\"]");
+                    String[] nodeList = in.nextLine().split(" ");
+                    int [] n = new int[nodeList.length];
+                    for (int i = 0; i < nodeList.length; i++) {
+                        n[i] = Integer.parseInt(nodeList[i]);
+                    }
+                    this.requestCS(n);
                     break;
                 case Manager.COMMAND_STATUS:
                     this.requestStatus();
