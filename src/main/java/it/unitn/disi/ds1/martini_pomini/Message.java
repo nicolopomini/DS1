@@ -38,4 +38,7 @@ public class Message {
     
     // message to spread the token holder
     public static class Spread implements Serializable {}
+    
+    // message to spread the token holder
+    public static class Status implements Serializable {}
 }

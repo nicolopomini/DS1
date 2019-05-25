@@ -13,6 +13,7 @@ import it.unitn.disi.ds1.martini_pomini.Message.Priviledge;
 import it.unitn.disi.ds1.martini_pomini.Message.Request;
 import it.unitn.disi.ds1.martini_pomini.Message.Spread;
 import it.unitn.disi.ds1.martini_pomini.Message.Startup;
+import it.unitn.disi.ds1.martini_pomini.Message.Status;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
@@ -85,6 +86,7 @@ public class Node extends AbstractActor {
          * Method to send a priviledge message to the node in the head of the queue
          * The node must be the holder of the token
          */
+        System.out.println("Node " + this.id + ": assignPriviledge");
         if(this.holder.equals(getSelf()) && !this.using && !this.request_q.isEmpty()) {
             this.holder = this.request_q.poll();
             this.asked = false;
@@ -104,6 +106,7 @@ public class Node extends AbstractActor {
         /**
          * Method to request the token
          */
+        System.out.println("Node " + this.id + " makeRequest");
         if (!this.holder.equals(getSelf()) && !this.request_q.isEmpty() && !this.asked) {
             this.holder.tell(new Request(), getSelf());
             this.asked = true;
@@ -131,6 +134,7 @@ public class Node extends AbstractActor {
          * Again, due to the conditions, only one on the two methods will be effectively executed
          */ 
         this.request_q.add(getSender());    //non sono sicuro che funzioni
+        System.out.println("Node " + this.id + "queue: " + this.request_q.size() + " " + this.request_q);
         this.assignPriviledge();
         this.makeRequest();
     }
@@ -160,7 +164,7 @@ public class Node extends AbstractActor {
         msg.neighbours.forEach((n) -> { 
             this.neighbours.add(n);
         });
-        System.out.println("Node " + this.id + ": startup received. " + this.toString());
+        System.out.println("Node " + this.id + ": startup received. #Neighbors: " + this.neighbours.size() + "\n" + this.toString());
     }
     
     private void receiveToken(Inject msg) {
@@ -183,6 +187,10 @@ public class Node extends AbstractActor {
         });
         System.out.println("Node " + this.id + ": token info received from another node. The holder for node " + this.id + " is " + this.holder);
     }
+    
+    private void provideStatus(Status msg) {
+        System.out.println(this.toString());
+    }
 
     @Override
     public Receive createReceive() {
@@ -193,6 +201,7 @@ public class Node extends AbstractActor {
                 .match(Startup.class, this::handleStartup)
                 .match(Inject.class, this::receiveToken)
                 .match(Spread.class, this::getHolderInformation)
+                .match(Status.class, this::provideStatus)
                 .build();
     }
     
