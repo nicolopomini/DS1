@@ -7,9 +7,7 @@ package it.unitn.disi.ds1.martini_pomini;
 
 import akka.actor.ActorRef;
 import java.io.Serializable;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
 
 /**
  *
@@ -38,7 +36,28 @@ public class Message {
     
     // message to spread the token holder
     public static class Spread implements Serializable {}
-    
+
     // message to spread the token holder
     public static class Status implements Serializable {}
+
+    // message to make a node fail
+    public static class Fail implements Serializable {}
+
+    // message to ask for the ok in restarting the node
+    public static class Restart implements Serializable {}
+
+    // message to answer ok in restarting the node
+    public static class Advise implements Serializable {
+        public ActorRef holder, self;
+        public boolean asked;
+        public LinkedList<ActorRef> request_q;
+        public Advise(ActorRef self, ActorRef holder, LinkedList<ActorRef> request_q, boolean asked) {
+            this.self = self;
+            this.holder = holder;
+            this.request_q = (LinkedList<ActorRef>) request_q.clone();
+            this.asked = asked;
+        }
+    }
+
+    public static class Name implements Serializable {}
 }

@@ -11,6 +11,7 @@ import it.unitn.disi.ds1.martini_pomini.Message.Enter;
 import it.unitn.disi.ds1.martini_pomini.Message.Inject;
 import it.unitn.disi.ds1.martini_pomini.Message.Startup;
 import it.unitn.disi.ds1.martini_pomini.Message.Status;
+import it.unitn.disi.ds1.martini_pomini.Message.Fail;
 import java.io.BufferedReader;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
@@ -30,6 +31,7 @@ public class Manager {
     public static final String COMMAND_REQUEST = "r";
     public static final String COMMAND_EXIT = "q";
     public static final String COMMAND_STATUS = "s";
+    public static final String COMMAND_FAIL = "f";
     
     private Hashtable<Integer, ArrayList<ActorRef>> edges;
     private Hashtable<Integer, ActorRef> nodes;
@@ -86,6 +88,7 @@ public class Manager {
         System.out.println("\t" + Manager.COMMAND_STATUS + " -> print the status of all nodes");
         System.out.println("\t" + Manager.COMMAND_INJECT + " -> inject the token into a node");
         System.out.println("\t" + Manager.COMMAND_REQUEST + " -> request critical section access for a node");
+        System.out.println("\t" + Manager.COMMAND_FAIL + " -> make a node fail and restart");
         System.out.println("\t" + Manager.COMMAND_EXIT + " -> quit");
         System.out.println();
     }
@@ -113,11 +116,21 @@ public class Manager {
             node.tell(new Status(), null);
         });
     }
+    public void fail(int node) {
+        if (node < 0 || node >= this.nodes.size()) {
+            System.err.println("Fatal, the node does not exist");
+            System.exit(1);
+        }
+        this.nodes.get(node).tell(new Fail(), null);
+    }
+
     
     public void handleCommands() {
         boolean goOn = true;
         Scanner in = new Scanner(System.in);
         this.printCommands();
+        String node;
+
         while(goOn) {
             System.out.println("Type a command:");
             String command = in.nextLine();
@@ -130,7 +143,7 @@ public class Manager {
                     break;
                 case Manager.COMMAND_INJECT:
                     System.out.println("Select the node to be injected [from 0 to " + (this.nodes.size() - 1) + "]");
-                    String node = in.nextLine();
+                    node = in.nextLine();
                     this.injectToken(Integer.parseInt(node));
                     break;
                 case Manager.COMMAND_REQUEST:
@@ -144,6 +157,11 @@ public class Manager {
                     break;
                 case Manager.COMMAND_STATUS:
                     this.requestStatus();
+                    break;
+                case Manager.COMMAND_FAIL:
+                    System.out.println("Select the node which should fail [from 0 to " + (this.nodes.size() - 1) + "]");
+                    node = in.nextLine();
+                    this.fail(Integer.parseInt(node));
                     break;
                 default: 
                     System.out.println("This command doesn't exist");

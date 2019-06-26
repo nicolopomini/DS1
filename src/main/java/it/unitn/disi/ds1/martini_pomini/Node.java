@@ -4,6 +4,7 @@
  * and open the template in the editor.
  */
 package it.unitn.disi.ds1.martini_pomini;
+import akka.AkkaVersion;
 import akka.actor.AbstractActor;
 import akka.actor.ActorRef;
 import akka.actor.Props;
@@ -14,20 +15,32 @@ import it.unitn.disi.ds1.martini_pomini.Message.Request;
 import it.unitn.disi.ds1.martini_pomini.Message.Spread;
 import it.unitn.disi.ds1.martini_pomini.Message.Startup;
 import it.unitn.disi.ds1.martini_pomini.Message.Status;
+import it.unitn.disi.ds1.martini_pomini.Message.Fail;
+import it.unitn.disi.ds1.martini_pomini.Message.Restart;
+import it.unitn.disi.ds1.martini_pomini.Message.Name;
+import it.unitn.disi.ds1.martini_pomini.Message.Advise;
+import scala.concurrent.Await;
+import scala.concurrent.duration.Duration;
+
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Queue;
 import java.util.Random;
+import java.util.concurrent.TimeUnit;
+
+import static akka.pattern.Patterns.ask;
 
 /**
  *
  * @author pomo
  */
+
+
 public class Node extends AbstractActor {
     // variables for the protocol
     private ActorRef holder;
-    private boolean using, asked;
+    private boolean using, asked, recovery;
     private final Queue<ActorRef> request_q;
     
     //variables for the structure
@@ -42,10 +55,11 @@ public class Node extends AbstractActor {
         this.neighbours = new ArrayList<>();
         this.using = false;
         this.asked = false;
+        this.recovery = false;
         this.random = new Random();
         System.out.println("Node " + this.id + " started");
     }
-    
+
     static public Props props(int id) {
         return Props.create(Node.class, () -> new Node(id));
     }
@@ -86,30 +100,44 @@ public class Node extends AbstractActor {
          * Method to send a priviledge message to the node in the head of the queue
          * The node must be the holder of the token
          */
-        System.out.println("Node " + this.id + ": assignPriviledge");
-        if(this.holder.equals(getSelf()) && !this.using && !this.request_q.isEmpty()) {
-            this.holder = this.request_q.poll();
-            this.asked = false;
-            if (this.holder.equals(getSelf())) {
-                this.using = true;
-                this.doCriticalSection();
-                this.exitCS();
-            }
-            else {
-                // send priviledge to holder
-                this.holder.tell(new Priviledge(), getSelf());
+        if (!this.recovery) {
+            if(this.holder.equals(getSelf()) && !this.using && !this.request_q.isEmpty()) {
+                this.holder = this.request_q.poll();
+                this.asked = false;
+                if (this.holder.equals(getSelf())) {
+                    this.using = true;
+                    this.doCriticalSection();
+                    this.exitCS();
+                }
+                else {
+                    // send priviledge to holder
+                    try {
+                        System.out.println("Node " + this.id + " is assigning privilege to node " + Await.result(ask(this.holder,new Name(),1000),Duration.create(1000, TimeUnit.MILLISECONDS)));
+                        //System.out.println("Node " + this.id + " is assigning privilege to node " + this.holder);
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                    this.holder.tell(new Priviledge(), getSelf());
+                }
             }
         }
     }
-    
+
     private void makeRequest() {
         /**
          * Method to request the token
          */
-        System.out.println("Node " + this.id + " makeRequest");
-        if (!this.holder.equals(getSelf()) && !this.request_q.isEmpty() && !this.asked) {
-            this.holder.tell(new Request(), getSelf());
-            this.asked = true;
+        if (!this.recovery) {
+            if (!this.holder.equals(getSelf()) && !this.request_q.isEmpty() && !this.asked) {
+                try {
+                    System.out.println("Node " + this.id + " is making a request to node " + Await.result(ask(this.holder,new Name(),1000),Duration.create(1000, TimeUnit.MILLISECONDS)));
+                    //System.out.println("Node " + this.id + " is making a request to node " + this.holder);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+                this.holder.tell(new Request(), getSelf());
+                this.asked = true;
+            }
         }
     }
         
@@ -134,7 +162,21 @@ public class Node extends AbstractActor {
          * Again, due to the conditions, only one on the two methods will be effectively executed
          */ 
         this.request_q.add(getSender());    //non sono sicuro che funzioni
-        System.out.println("Node " + this.id + "queue: " + this.request_q.size() + " " + this.request_q);
+        System.out.println("Node " + this.id + " queue contains #" + this.request_q.size());
+
+        if (this.request_q.size() > 0) {
+            System.out.println("\telements: ");
+            for (ActorRef element : this.request_q) {
+                try {
+                    System.out.println("\t\tNode " + Await.result(ask(element,new Name(),1000),Duration.create(1000, TimeUnit.MILLISECONDS)));
+                    //System.out.println("\t\t" + this.holder);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+
+            }
+        }
+
         this.assignPriviledge();
         this.makeRequest();
     }
@@ -156,7 +198,9 @@ public class Node extends AbstractActor {
         this.assignPriviledge();
         this.makeRequest();
     }
-    
+
+    /*----------------------NODE'S INTERACTION LOGIC-----------------------------*/
+
     private void handleStartup(Startup msg) {
         /**
          * Message received on startup, to get the list of neighbours
@@ -185,9 +229,97 @@ public class Node extends AbstractActor {
             if (!n.equals(this.holder))
                 n.tell(new Spread(), getSelf());
         });
-        System.out.println("Node " + this.id + ": token info received from another node. The holder for node " + this.id + " is " + this.holder);
+        try {
+            System.out.println("Node " + this.id + ": token info received from another node. The holder for node " + this.id + " is " + Await.result(ask(this.holder,new Name(),1000),Duration.create(1000, TimeUnit.MILLISECONDS)));
+            //System.out.println("Node " + this.id + ": token info received from another node. The holder for node " + this.id + " is " + this.holder);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
-    
+
+    private void simulateFailure(Fail msg) {
+        /**
+         * It simulates the failure of the node. In the end it start the recovery procedure.
+         */
+        if (!this.using && !this.recovery) {
+            System.out.println("Node " + this.id + " has failed and now is down.");
+
+            //simulating the loss of data.
+            this.holder = null;
+            this.request_q.clear();
+            this.asked = false;
+
+            try {
+                Thread.sleep(1000 + this.random.nextInt(500));
+            } catch (InterruptedException ex) {
+                System.err.println("Something went wrong with the sleep of node " + this.id);
+            }
+            System.out.println("Node " + this.id + " has restarted.");
+            this.recoveryProcedure();
+            this.assignPriviledge();
+            this.makeRequest();
+        }
+    }
+
+    private void recoveryProcedure() {
+        /**
+         * The recovery procedure for a failed node. In the end, the node is fully restored
+         */
+        this.recovery = true;
+
+        //delay, to ensure that all the message sent by this node has been received by the other nodes.
+        try {
+            Thread.sleep(1000);
+        } catch (InterruptedException ex) {
+            System.err.println("Something went wrong with the sleep of node " + this.id);
+        }
+
+        LinkedList<Advise> responses = new LinkedList<>();
+        this.neighbours.forEach((n) -> {
+            try {
+                responses.add((Advise) Await.result(ask(this.holder,new Restart(),1000),Duration.create(1000, TimeUnit.MILLISECONDS)));
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        });
+
+        //Determining the holder and asked and rebuilding the request_q.
+        boolean allEquals = true;
+        ActorRef supposedHolder = null;
+        LinkedList<ActorRef> privilegedNodeQueue = new LinkedList<>();
+        for (Advise resp : responses) {
+            if (!resp.holder.equals(getSelf())) {
+                allEquals = false;
+                supposedHolder = resp.holder;
+                privilegedNodeQueue = (LinkedList<ActorRef>) resp.request_q.clone();
+            } else {
+                if (resp.asked) {
+                    this.request_q.add(resp.self);
+                }
+            }
+        }
+
+        if (allEquals) {
+            this.holder = getSelf();
+            this.asked = false;
+        } else {
+            this.holder = supposedHolder;
+            this.asked = privilegedNodeQueue.contains(getSelf());
+        }
+
+        //
+
+        this.recovery = false;
+    }
+
+    private void adviseMessage(Restart msg) {
+        getSender().tell(new Advise(getSelf(),this.holder, (LinkedList<ActorRef>) this.request_q, this.asked), getSelf());
+    }
+
+    private void answerName(Name msg) {
+        getSender().tell(this.id,getSelf());
+    }
+
     private void provideStatus(Status msg) {
         System.out.println(this.toString());
     }
@@ -202,11 +334,9 @@ public class Node extends AbstractActor {
                 .match(Inject.class, this::receiveToken)
                 .match(Spread.class, this::getHolderInformation)
                 .match(Status.class, this::provideStatus)
+                .match(Fail.class, this::simulateFailure)
+                .match(Name.class, this::answerName)
+                .match(Restart.class, this::adviseMessage)
                 .build();
     }
-    
-    
-    
-    
-    
 }
