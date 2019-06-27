@@ -76,11 +76,19 @@ public class Node extends AbstractActor {
     
     @Override
     public String toString() {
+        int hold = -1;
+        try {
+            hold = (int) Await.result(ask(this.holder,new Name(),1000),Duration.create(1000, TimeUnit.MILLISECONDS));
+        } catch (Exception e) {
+            //e.printStackTrace;
+        }
+
         return "Node " + this.id + " (\n" +
-                "\tHolder: " + this.holder + "\n" +
+                "\tHolder: " + ((hold == -1) ? this.holder : hold) + "\n" +
                 "\t#request queue: " + this.request_q.size() + "\n" +
                 "\tUsing: " + this.using + "\n" +
                 "\tAsked: " + this.asked + "\n)";
+
     }
     
     /*----------------------NODE'S INTERNAL LOGIC-----------------------------*/
@@ -115,7 +123,8 @@ public class Node extends AbstractActor {
                         System.out.println("Node " + this.id + " is assigning privilege to node " + Await.result(ask(this.holder,new Name(),1000),Duration.create(1000, TimeUnit.MILLISECONDS)));
                         //System.out.println("Node " + this.id + " is assigning privilege to node " + this.holder);
                     } catch (Exception e) {
-                        e.printStackTrace();
+                        //e.printStackTrace();
+                        System.out.println("Node " + this.id + " is assigning privilege to node " + this.holder);
                     }
                     this.holder.tell(new Priviledge(), getSelf());
                 }
@@ -133,7 +142,8 @@ public class Node extends AbstractActor {
                     System.out.println("Node " + this.id + " is making a request to node " + Await.result(ask(this.holder,new Name(),1000),Duration.create(1000, TimeUnit.MILLISECONDS)));
                     //System.out.println("Node " + this.id + " is making a request to node " + this.holder);
                 } catch (Exception e) {
-                    e.printStackTrace();
+                    System.out.println("Node " + this.id + " is making a request to node " + this.holder);
+                    //e.printStackTrace();
                 }
                 this.holder.tell(new Request(), getSelf());
                 this.asked = true;
@@ -171,7 +181,8 @@ public class Node extends AbstractActor {
                     System.out.println("\t\tNode " + Await.result(ask(element,new Name(),1000),Duration.create(1000, TimeUnit.MILLISECONDS)));
                     //System.out.println("\t\t" + this.holder);
                 } catch (Exception e) {
-                    e.printStackTrace();
+                    //e.printStackTrace();
+                    System.out.println("\t\t" + this.holder);
                 }
 
             }
@@ -233,7 +244,9 @@ public class Node extends AbstractActor {
             System.out.println("Node " + this.id + ": token info received from another node. The holder for node " + this.id + " is " + Await.result(ask(this.holder,new Name(),1000),Duration.create(1000, TimeUnit.MILLISECONDS)));
             //System.out.println("Node " + this.id + ": token info received from another node. The holder for node " + this.id + " is " + this.holder);
         } catch (Exception e) {
-            e.printStackTrace();
+            //e.printStackTrace();
+            System.out.println("Node " + this.id + ": token info received from another node. The holder for node " + this.id + " is " + this.holder);
+
         }
     }
 
@@ -266,7 +279,7 @@ public class Node extends AbstractActor {
          * The recovery procedure for a failed node. In the end, the node is fully restored
          */
         this.recovery = true;
-
+        System.out.println("Node " + this.id + " has started the recovery procedure");
         //delay, to ensure that all the message sent by this node has been received by the other nodes.
         try {
             Thread.sleep(1000);
@@ -274,14 +287,30 @@ public class Node extends AbstractActor {
             System.err.println("Something went wrong with the sleep of node " + this.id);
         }
 
+        int count = 1;
         LinkedList<Advise> responses = new LinkedList<>();
-        this.neighbours.forEach((n) -> {
-            try {
-                responses.add((Advise) Await.result(ask(this.holder,new Restart(),1000),Duration.create(1000, TimeUnit.MILLISECONDS)));
-            } catch (Exception e) {
-                e.printStackTrace();
+
+        while ((responses.size() != this.neighbours.size()) && count < 6) {
+            responses.clear();
+            for (ActorRef n : this.neighbours) {
+                try {
+                    int time = 1000 * count;
+                    //System.out.println("Asking " + n + " to acknoledge the restart operation");
+                    responses.add((Advise) Await.result(ask(n, new Restart(), time), Duration.create(time, TimeUnit.MILLISECONDS)));
+                    //System.out.println("Node " + n + " acknoledged the restart operation");
+                } catch (Exception e) {
+                    System.out.println("One or more nodes has not answered yet. Retrying for the #" + count + " time");
+                    count++;
+                    e.printStackTrace();
+                }
             }
-        });
+        }
+
+        if (responses.size() != this.neighbours.size()) {
+            System.out.println("After "+count+" tentatives one or more node did not acknoledged the restart operation of the node " + this.id + ".\nThis is an unexpected situation, the program will now terminate.");
+            System.exit(1);
+        }
+        System.out.println("Node " + this.id + " has informed all the neighbours that the recovery procedure has started.");
 
         //Determining the holder and asked and rebuilding the request_q.
         boolean allEquals = true;
@@ -289,8 +318,9 @@ public class Node extends AbstractActor {
         LinkedList<ActorRef> privilegedNodeQueue = new LinkedList<>();
         for (Advise resp : responses) {
             if (!resp.holder.equals(getSelf())) {
+                //System.out.println("Resp holder " + resp.holder);
                 allEquals = false;
-                supposedHolder = resp.holder;
+                supposedHolder = resp.self;
                 privilegedNodeQueue = (LinkedList<ActorRef>) resp.request_q.clone();
             } else {
                 if (resp.asked) {
@@ -307,8 +337,7 @@ public class Node extends AbstractActor {
             this.asked = privilegedNodeQueue.contains(getSelf());
         }
 
-        //
-
+        System.out.println("Node " + this.id + " has terminated with success the recovery procedure. The values of holder, asked and request_q has been correctly inferred.");
         this.recovery = false;
     }
 
