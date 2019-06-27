@@ -2,6 +2,7 @@
 .gradle
 .idea
 build/
+out/
 .nb-gradle
 gradlew
 gradlew.bat
