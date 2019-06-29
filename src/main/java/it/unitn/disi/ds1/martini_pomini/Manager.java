@@ -12,10 +12,6 @@ import it.unitn.disi.ds1.martini_pomini.Message.Inject;
 import it.unitn.disi.ds1.martini_pomini.Message.Startup;
 import it.unitn.disi.ds1.martini_pomini.Message.Status;
 import it.unitn.disi.ds1.martini_pomini.Message.Fail;
-import java.io.BufferedReader;
-import java.io.FileNotFoundException;
-import java.io.FileReader;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Hashtable;
 import java.util.Scanner;
@@ -25,7 +21,7 @@ import java.util.Scanner;
  * @author pomo
  */
 public class Manager {
-    public static final String DEFAULT_FILE = "src/main/resources/topology.txt";
+    public static final String DEFAULT_FILE = "src/main/resources/config.json";
     public static final String COMMAND_HELP = "h";
     public static final String COMMAND_INJECT = "i";
     public static final String COMMAND_REQUEST = "r";
@@ -36,46 +32,39 @@ public class Manager {
     private Hashtable<Integer, ArrayList<ActorRef>> edges;
     private Hashtable<Integer, ActorRef> nodes;
     private final ActorSystem system;
+    private ConfigParser configManager;
     
     public Manager(String filepath) {
+        this.configManager = new ConfigParser(filepath);
         this.edges = new Hashtable<>();
         this.nodes = new Hashtable<>();
         this.system = ActorSystem.create("ds1project");
-        try {
-            System.out.println("Building the system with the topology specified in " + filepath);
-            BufferedReader inputFile = new BufferedReader(new FileReader(filepath));
-            int links = Integer.parseInt(inputFile.readLine());
-            System.out.println("Links: " + links);
-            for (int i = 0; i < links; i++) {
-                String[] link = inputFile.readLine().split(" ");
-                int node1id = Integer.parseInt(link[0]);
-                int node2id = Integer.parseInt(link[1]);
-                System.out.println(node1id + " " + node2id);
-                // add the nodes if is the first time they are met
-                if (!this.edges.containsKey(node1id)) {
-                    this.nodes.put(node1id, this.system.actorOf(Node.props(node1id)));
-                    this.edges.put(node1id, new ArrayList<>());
-                }
-                if (!this.edges.containsKey(node2id)) {
-                    this.nodes.put(node2id, this.system.actorOf(Node.props(node2id)));
-                    this.edges.put(node2id, new ArrayList<>());
-                }
-                // adding the connections
-                this.edges.get(node1id).add(this.nodes.get(node2id));
-                this.edges.get(node2id).add(this.nodes.get(node1id));
+        System.out.println("Building the system with the topology specified in " + filepath);
+        ArrayList<String> links = this.configManager.getNodeTopology();
+        for (int i = 0; i < links.size(); i++) {
+            String[] link = links.get(i).split(" ");
+            int node1id = Integer.parseInt(link[0]);
+            int node2id = Integer.parseInt(link[1]);
+            System.out.println(node1id + " " + node2id);
+            // add the nodes if is the first time they are met
+            if (!this.edges.containsKey(node1id)) {
+                this.nodes.put(node1id, this.system.actorOf(Node.props(node1id, this.configManager.getMinCSTime(), this.configManager.getMaxCSTime(), this.configManager.getNodeDownTime(), this.configManager.getNodeStartRecoveryTime())));
+                this.edges.put(node1id, new ArrayList<>());
             }
-            // send the neighbors to each node
-            this.nodes.forEach((index, node) -> {
-                node.tell(new Startup(this.edges.get(index)), null);
-            });
-            // starting the interaction with the user
-            this.handleCommands();
-        } catch (FileNotFoundException ex) {
-            System.err.println("Error in opening the topology file. " + ex.getMessage());
-        } catch (IOException ex) {
-            System.err.println("Error in reading the topology file. " + ex.getMessage());
+            if (!this.edges.containsKey(node2id)) {
+                this.nodes.put(node2id, this.system.actorOf(Node.props(node2id, this.configManager.getMinCSTime(), this.configManager.getMaxCSTime(), this.configManager.getNodeDownTime(), this.configManager.getNodeStartRecoveryTime())));
+                this.edges.put(node2id, new ArrayList<>());
+            }
+            // adding the connections
+            this.edges.get(node1id).add(this.nodes.get(node2id));
+            this.edges.get(node2id).add(this.nodes.get(node1id));
         }
-        
+        // send the neighbors to each node
+        this.nodes.forEach((index, node) -> {
+            node.tell(new Startup(this.edges.get(index)), null);
+        });
+        // starting the interaction with the user
+        this.handleCommands();
     }
     
     public Manager() {
@@ -137,6 +126,7 @@ public class Manager {
             switch(command) {
                 case Manager.COMMAND_EXIT:
                     goOn = false;
+                    System.out.println("Bye");
                     break;
                 case Manager.COMMAND_HELP:
                     this.printCommands();
@@ -167,5 +157,6 @@ public class Manager {
                     System.out.println("This command doesn't exist");
             }
         }
+        System.exit(0);
     }
 }

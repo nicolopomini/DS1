@@ -9,6 +9,7 @@ repositories {
 
 dependencies {
     compile group: 'com.typesafe.akka', name: 'akka-actor_2.12', version: '2.5.22'
+    implementation 'com.google.code.gson:gson:2.8.5'
 }
 
 compileJava {

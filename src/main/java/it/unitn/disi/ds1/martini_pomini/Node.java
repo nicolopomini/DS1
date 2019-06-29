@@ -4,7 +4,6 @@
  * and open the template in the editor.
  */
 package it.unitn.disi.ds1.martini_pomini;
-import akka.AkkaVersion;
 import akka.actor.AbstractActor;
 import akka.actor.ActorRef;
 import akka.actor.Props;
@@ -44,11 +43,11 @@ public class Node extends AbstractActor {
     private final Queue<ActorRef> request_q;
     
     //variables for the structure
-    private final int id;
+    private final int id, minCSTime, maxCSTime, downTime, startRecoveryTime;
     private final List<ActorRef> neighbours;
     private final Random random;
 
-    public Node(int id) {
+    public Node(int id, int minCSTime, int maxCSTime, int downTime, int startRecoveryTime) {
         this.id = id;
         this.holder = null;
         this.request_q = new LinkedList<>();
@@ -57,11 +56,15 @@ public class Node extends AbstractActor {
         this.asked = false;
         this.recovery = false;
         this.random = new Random();
+        this.minCSTime = minCSTime;
+        this.maxCSTime = maxCSTime;
+        this.downTime = downTime;
+        this.startRecoveryTime = startRecoveryTime;
         System.out.println("Node " + this.id + " started");
     }
 
-    static public Props props(int id) {
-        return Props.create(Node.class, () -> new Node(id));
+    static public Props props(int id, int minCSTime, int maxCSTime, int downTime, int startRecoveryTime) {
+        return Props.create(Node.class, () -> new Node(id, minCSTime, maxCSTime, downTime, startRecoveryTime));
     }
 
     @Override
@@ -96,7 +99,7 @@ public class Node extends AbstractActor {
     private void doCriticalSection() {
         System.out.println("Node " + this.id + " enters the critical section");
         try {
-            Thread.sleep(50 + this.random.nextInt(950));
+            Thread.sleep(this.minCSTime + this.random.nextInt(this.maxCSTime - this.minCSTime));
         } catch (InterruptedException ex) {
             System.err.println("Something went wrong with the sleep of node " + this.id);
         }
@@ -263,7 +266,7 @@ public class Node extends AbstractActor {
             this.asked = false;
 
             try {
-                Thread.sleep(1000 + this.random.nextInt(500));
+                Thread.sleep(this.downTime);
             } catch (InterruptedException ex) {
                 System.err.println("Something went wrong with the sleep of node " + this.id);
             }
@@ -282,7 +285,7 @@ public class Node extends AbstractActor {
         System.out.println("Node " + this.id + " has started the recovery procedure");
         //delay, to ensure that all the message sent by this node has been received by the other nodes.
         try {
-            Thread.sleep(1000);
+            Thread.sleep(this.startRecoveryTime);
         } catch (InterruptedException ex) {
             System.err.println("Something went wrong with the sleep of node " + this.id);
         }

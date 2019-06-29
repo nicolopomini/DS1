@@ -1,0 +1,14 @@
+{
+    "topology": [
+        {"source": 0, "dest": 1},
+        {"source": 0, "dest": 2},
+        {"source": 1, "dest": 3}
+    ],
+    "min_cs_time": 10,
+    "max_cs_time": 1000,
+    "node_down_time": 500,
+    "node_start_recovery_time": 500,
+    "commands": [
+        {"command": "i", "arg": "5"}
+    ]
+}
