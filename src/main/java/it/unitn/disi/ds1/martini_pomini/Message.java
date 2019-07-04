@@ -59,5 +59,5 @@ public class Message {
         }
     }
 
-    public static class Name implements Serializable {}
+    //public static class Name implements Serializable {}
 }

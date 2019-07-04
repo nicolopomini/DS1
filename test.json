@@ -1,0 +1,8 @@
+{
+    "commands": [
+        {"command": "i", "arg": "1"},
+        {"command": "f", "arg": "1"},
+        {"command": "r", "arg": "3"},
+        {"command": "r", "arg": "2"}
+    ]
+}

@@ -24,7 +24,7 @@ public class ConfigParser {
     public ConfigParser(String filepath) {
         try {
             String content = new Scanner(new File(filepath)).useDelimiter("\\Z").next();
-            System.out.println(content);
+            //System.out.println(content);
             this.config = new JsonParser().parse(content).getAsJsonObject();
         } catch (FileNotFoundException ex) {
             System.err.println("Error in parsing the config file");
@@ -57,7 +57,7 @@ public class ConfigParser {
         }
         return topology;
     }
-    
+
     public ArrayList<String> getCommandList() {
         ArrayList<String> commands = new ArrayList<>();
         JsonArray cmd = this.config.getAsJsonArray("commands");
@@ -69,4 +69,5 @@ public class ConfigParser {
         }
         return commands;
     }
+
 }

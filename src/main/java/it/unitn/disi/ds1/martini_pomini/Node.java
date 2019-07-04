@@ -16,7 +16,7 @@ import it.unitn.disi.ds1.martini_pomini.Message.Startup;
 import it.unitn.disi.ds1.martini_pomini.Message.Status;
 import it.unitn.disi.ds1.martini_pomini.Message.Fail;
 import it.unitn.disi.ds1.martini_pomini.Message.Restart;
-import it.unitn.disi.ds1.martini_pomini.Message.Name;
+//import it.unitn.disi.ds1.martini_pomini.Message.Name;
 import it.unitn.disi.ds1.martini_pomini.Message.Advise;
 import scala.concurrent.Await;
 import scala.concurrent.duration.Duration;
@@ -81,16 +81,16 @@ public class Node extends AbstractActor {
     public String toString() {
         int hold = -1;
         try {
-            hold = (int) Await.result(ask(this.holder,new Name(),1000),Duration.create(1000, TimeUnit.MILLISECONDS));
+            //hold = (int) Await.result(ask(this.holder,new Name(),1000),Duration.create(1000, TimeUnit.MILLISECONDS));
         } catch (Exception e) {
             //e.printStackTrace;
         }
 
-        return "Node " + this.id + " (\n" +
+        return "Node " + this.id + "(Reference:" + getSelf() + ") {\n" +
                 "\tHolder: " + ((hold == -1) ? this.holder : hold) + "\n" +
                 "\t#request queue: " + this.request_q.size() + "\n" +
                 "\tUsing: " + this.using + "\n" +
-                "\tAsked: " + this.asked + "\n)";
+                "\tAsked: " + this.asked + "\n}";
 
     }
     
@@ -123,8 +123,8 @@ public class Node extends AbstractActor {
                 else {
                     // send priviledge to holder
                     try {
-                        System.out.println("Node " + this.id + " is assigning privilege to node " + Await.result(ask(this.holder,new Name(),1000),Duration.create(1000, TimeUnit.MILLISECONDS)));
-                        //System.out.println("Node " + this.id + " is assigning privilege to node " + this.holder);
+                        //System.out.println("Node " + this.id + " is assigning privilege to node " + Await.result(ask(this.holder,new Name(),1000),Duration.create(1000, TimeUnit.MILLISECONDS)));
+                        System.out.println("Node " + this.id + " is assigning privilege to node " + this.holder);
                     } catch (Exception e) {
                         //e.printStackTrace();
                         System.out.println("Node " + this.id + " is assigning privilege to node " + this.holder);
@@ -142,8 +142,8 @@ public class Node extends AbstractActor {
         if (!this.recovery) {
             if (!this.holder.equals(getSelf()) && !this.request_q.isEmpty() && !this.asked) {
                 try {
-                    System.out.println("Node " + this.id + " is making a request to node " + Await.result(ask(this.holder,new Name(),1000),Duration.create(1000, TimeUnit.MILLISECONDS)));
-                    //System.out.println("Node " + this.id + " is making a request to node " + this.holder);
+                    //System.out.println("Node " + this.id + " is making a request to node " + Await.result(ask(this.holder,new Name(),1000),Duration.create(1000, TimeUnit.MILLISECONDS)));
+                    System.out.println("Node " + this.id + " is making a request to node " + this.holder);
                 } catch (Exception e) {
                     System.out.println("Node " + this.id + " is making a request to node " + this.holder);
                     //e.printStackTrace();
@@ -173,24 +173,17 @@ public class Node extends AbstractActor {
          * The node receives a Request message
          * the sender is added in the queue
          * Again, due to the conditions, only one on the two methods will be effectively executed
-         */ 
+         */
         this.request_q.add(getSender());    //non sono sicuro che funzioni
-        System.out.println("Node " + this.id + " queue contains #" + this.request_q.size());
+        String print = "Node " + this.id + " queue contains #" + this.request_q.size() + "\n";
 
         if (this.request_q.size() > 0) {
-            System.out.println("\telements: ");
+            print += "\telements: \n";
             for (ActorRef element : this.request_q) {
-                try {
-                    System.out.println("\t\tNode " + Await.result(ask(element,new Name(),1000),Duration.create(1000, TimeUnit.MILLISECONDS)));
-                    //System.out.println("\t\t" + this.holder);
-                } catch (Exception e) {
-                    //e.printStackTrace();
-                    System.out.println("\t\t" + this.holder);
-                }
-
+                print += "\t\t" + this.holder + "\n";
             }
         }
-
+        System.out.print(print);
         this.assignPriviledge();
         this.makeRequest();
     }
@@ -244,8 +237,8 @@ public class Node extends AbstractActor {
                 n.tell(new Spread(), getSelf());
         });
         try {
-            System.out.println("Node " + this.id + ": token info received from another node. The holder for node " + this.id + " is " + Await.result(ask(this.holder,new Name(),1000),Duration.create(1000, TimeUnit.MILLISECONDS)));
-            //System.out.println("Node " + this.id + ": token info received from another node. The holder for node " + this.id + " is " + this.holder);
+            //System.out.println("Node " + this.id + ": token info received from another node. The holder for node " + this.id + " is " + Await.result(ask(this.holder,new Name(),1000),Duration.create(1000, TimeUnit.MILLISECONDS)));
+            System.out.println("Node " + this.id + ": token info received from another node. The holder for node " + this.id + " is " + this.holder);
         } catch (Exception e) {
             //e.printStackTrace();
             System.out.println("Node " + this.id + ": token info received from another node. The holder for node " + this.id + " is " + this.holder);
@@ -304,7 +297,7 @@ public class Node extends AbstractActor {
                 } catch (Exception e) {
                     System.out.println("One or more nodes has not answered yet. Retrying for the #" + count + " time");
                     count++;
-                    e.printStackTrace();
+                    //e.printStackTrace();
                 }
             }
         }
@@ -347,11 +340,11 @@ public class Node extends AbstractActor {
     private void adviseMessage(Restart msg) {
         getSender().tell(new Advise(getSelf(),this.holder, (LinkedList<ActorRef>) this.request_q, this.asked), getSelf());
     }
-
+    /*
     private void answerName(Name msg) {
         getSender().tell(this.id,getSelf());
     }
-
+    */
     private void provideStatus(Status msg) {
         System.out.println(this.toString());
     }
@@ -367,7 +360,7 @@ public class Node extends AbstractActor {
                 .match(Spread.class, this::getHolderInformation)
                 .match(Status.class, this::provideStatus)
                 .match(Fail.class, this::simulateFailure)
-                .match(Name.class, this::answerName)
+                //.match(Name.class, this::answerName)
                 .match(Restart.class, this::adviseMessage)
                 .build();
     }

@@ -6,8 +6,8 @@
     ],
     "min_cs_time": 10,
     "max_cs_time": 1000,
-    "node_down_time": 500,
-    "node_start_recovery_time": 500,
+    "node_down_time": 1000,
+    "node_start_recovery_time": 1000,
     "commands": [
         {"command": "i", "arg": "5"}
     ]
