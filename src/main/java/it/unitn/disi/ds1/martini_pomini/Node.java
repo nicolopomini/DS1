@@ -175,10 +175,10 @@ public class Node extends AbstractActor {
          * Again, due to the conditions, only one on the two methods will be effectively executed
          */
         this.request_q.add(getSender());    //non sono sicuro che funzioni
-        String print = "Node " + this.id + " queue contains #" + this.request_q.size() + "\n";
+        String print = "Node " + this.id + " queue length: #" + this.request_q.size() + ".\n";
 
         if (this.request_q.size() > 0) {
-            print += "\telements: \n";
+            print += "\tElements in the queue: \n";
             for (ActorRef element : this.request_q) {
                 print += "\t\t" + element + "\n";
             }
