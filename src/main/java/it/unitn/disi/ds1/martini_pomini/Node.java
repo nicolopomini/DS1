@@ -180,7 +180,7 @@ public class Node extends AbstractActor {
         if (this.request_q.size() > 0) {
             print += "\telements: \n";
             for (ActorRef element : this.request_q) {
-                print += "\t\t" + this.holder + "\n";
+                print += "\t\t" + element + "\n";
             }
         }
         System.out.print(print);
@@ -253,17 +253,18 @@ public class Node extends AbstractActor {
         if (!this.using && !this.recovery) {
             System.out.println("Node " + this.id + " has failed and now is down.");
 
-            //simulating the loss of data.
-            this.holder = null;
-            this.request_q.clear();
-            this.asked = false;
-
             try {
                 Thread.sleep(this.downTime);
             } catch (InterruptedException ex) {
                 System.err.println("Something went wrong with the sleep of node " + this.id);
             }
             System.out.println("Node " + this.id + " has restarted.");
+            //simulating the loss of data.
+            this.holder = null;
+            this.request_q.clear();
+            this.asked = false;
+
+            this.recovery = true;
             this.recoveryProcedure();
             this.assignPriviledge();
             this.makeRequest();
@@ -274,7 +275,7 @@ public class Node extends AbstractActor {
         /**
          * The recovery procedure for a failed node. In the end, the node is fully restored
          */
-        this.recovery = true;
+
         System.out.println("Node " + this.id + " has started the recovery procedure");
         //delay, to ensure that all the message sent by this node has been received by the other nodes.
         try {
@@ -282,6 +283,11 @@ public class Node extends AbstractActor {
         } catch (InterruptedException ex) {
             System.err.println("Something went wrong with the sleep of node " + this.id);
         }
+
+        //simulating the loss of data.
+        this.holder = null;
+        this.request_q.clear();
+        this.asked = false;
 
         int count = 1;
         LinkedList<Advise> responses = new LinkedList<>();
