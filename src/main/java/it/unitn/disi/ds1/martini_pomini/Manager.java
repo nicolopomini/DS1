@@ -193,8 +193,10 @@ public class Manager {
                     this.fail(Integer.parseInt(node));
                     break;
                 case Manager.COMMAND_LOAD:
-                    System.out.println("Which file .json do you want to load?");
+                    System.out.println("Which file .json do you want to load? (Press enter leaving it empty for the default configuration file)");
                     file = in.nextLine();
+                    if (file.equals(""))
+                        file = Manager.DEFAULT_FILE;
                     this.load(file);
                     break;
                 default: 
