@@ -50,11 +50,11 @@ public class Manager {
             System.out.println(node1id + " " + node2id);
             // add the nodes if is the first time they are met
             if (!this.edges.containsKey(node1id)) {
-                this.nodes.put(node1id, this.system.actorOf(Node.props(node1id, this.configManager.getMinCSTime(), this.configManager.getMaxCSTime(), this.configManager.getNodeDownTime(), this.configManager.getNodeStartRecoveryTime())));
+                this.nodes.put(node1id, this.system.actorOf(Node.props(system, node1id, this.configManager.getMinCSTime(), this.configManager.getMaxCSTime(), this.configManager.getNodeDownTime(), this.configManager.getNodeStartRecoveryTime())));
                 this.edges.put(node1id, new ArrayList<>());
             }
             if (!this.edges.containsKey(node2id)) {
-                this.nodes.put(node2id, this.system.actorOf(Node.props(node2id, this.configManager.getMinCSTime(), this.configManager.getMaxCSTime(), this.configManager.getNodeDownTime(), this.configManager.getNodeStartRecoveryTime())));
+                this.nodes.put(node2id, this.system.actorOf(Node.props(system, node2id, this.configManager.getMinCSTime(), this.configManager.getMaxCSTime(), this.configManager.getNodeDownTime(), this.configManager.getNodeStartRecoveryTime())));
                 this.edges.put(node2id, new ArrayList<>());
             }
             // adding the connections

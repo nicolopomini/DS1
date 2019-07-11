@@ -5,6 +5,7 @@
  */
 package it.unitn.disi.ds1.martini_pomini;
 import akka.actor.AbstractActor;
+import akka.actor.ActorSystem;
 import akka.actor.ActorRef;
 import akka.actor.Props;
 import it.unitn.disi.ds1.martini_pomini.Message.Enter;
@@ -16,10 +17,9 @@ import it.unitn.disi.ds1.martini_pomini.Message.Startup;
 import it.unitn.disi.ds1.martini_pomini.Message.Status;
 import it.unitn.disi.ds1.martini_pomini.Message.Fail;
 import it.unitn.disi.ds1.martini_pomini.Message.Restart;
-//import it.unitn.disi.ds1.martini_pomini.Message.Name;
+import it.unitn.disi.ds1.martini_pomini.Message.Recovery;
+import it.unitn.disi.ds1.martini_pomini.Message.RecoveryWait;
 import it.unitn.disi.ds1.martini_pomini.Message.Advise;
-import scala.concurrent.Await;
-import scala.concurrent.duration.Duration;
 
 import java.util.ArrayList;
 import java.util.LinkedList;
@@ -29,6 +29,9 @@ import java.util.Random;
 import java.util.concurrent.TimeUnit;
 
 import static akka.pattern.Patterns.ask;
+import akka.actor.Props;
+import scala.concurrent.duration.Duration;
+import scala.concurrent.Await;
 
 /**
  *
@@ -37,9 +40,11 @@ import static akka.pattern.Patterns.ask;
 
 
 public class Node extends AbstractActor {
+    private ActorSystem system;
+
     // variables for the protocol
     private ActorRef holder;
-    private boolean using, asked, recovery;
+    private boolean using, asked, recovery, down;
     private final Queue<ActorRef> request_q;
     
     //variables for the structure
@@ -47,7 +52,8 @@ public class Node extends AbstractActor {
     private final List<ActorRef> neighbours;
     private final Random random;
 
-    public Node(int id, int minCSTime, int maxCSTime, int downTime, int startRecoveryTime) {
+    public Node(ActorSystem system, int id, int minCSTime, int maxCSTime, int downTime, int startRecoveryTime) {
+        this.system = system;
         this.id = id;
         this.holder = null;
         this.request_q = new LinkedList<>();
@@ -63,8 +69,8 @@ public class Node extends AbstractActor {
         System.out.println("Node " + this.id + " started");
     }
 
-    static public Props props(int id, int minCSTime, int maxCSTime, int downTime, int startRecoveryTime) {
-        return Props.create(Node.class, () -> new Node(id, minCSTime, maxCSTime, downTime, startRecoveryTime));
+    static public Props props(ActorSystem system, int id, int minCSTime, int maxCSTime, int downTime, int startRecoveryTime) {
+        return Props.create(Node.class, () -> new Node(system, id, minCSTime, maxCSTime, downTime, startRecoveryTime));
     }
 
     @Override
@@ -174,27 +180,31 @@ public class Node extends AbstractActor {
          * the sender is added in the queue
          * Again, due to the conditions, only one on the two methods will be effectively executed
          */
-        this.request_q.add(getSender());    //non sono sicuro che funzioni
-        String print = "Node " + this.id + " queue contains #" + this.request_q.size() + "\n";
+        if (!this.down) {
+            this.request_q.add(getSender());    //non sono sicuro che funzioni
+            String print = "Node " + this.id + " queue contains #" + this.request_q.size() + "\n";
 
-        if (this.request_q.size() > 0) {
-            print += "\telements: \n";
-            for (ActorRef element : this.request_q) {
-                print += "\t\t" + element + "\n";
+            if (this.request_q.size() > 0) {
+                print += "\telements: \n";
+                for (ActorRef element : this.request_q) {
+                    print += "\t\t" + element + "\n";
+                }
             }
+            System.out.print(print);
+            this.assignPriviledge();
+            this.makeRequest();
         }
-        System.out.print(print);
-        this.assignPriviledge();
-        this.makeRequest();
     }
     
     private void handlePriviledgeMessage(Priviledge msg) {
         /**
          * The node becomes the holder
          */
-        this.holder = getSelf();
-        this.assignPriviledge();
-        this.makeRequest();
+        if (!this.down) {
+            this.holder = getSelf();
+            this.assignPriviledge();
+            this.makeRequest();
+        }
     }
     
     private void exitCS() {
@@ -212,16 +222,17 @@ public class Node extends AbstractActor {
         /**
          * Message received on startup, to get the list of neighbours
          */
-        msg.neighbours.forEach((n) -> { 
+        msg.neighbours.forEach((n) -> {
             this.neighbours.add(n);
         });
         System.out.println("Node " + this.id + ": startup received. #Neighbors: " + this.neighbours.size() + "\n" + this.toString());
+
     }
-    
     private void receiveToken(Inject msg) {
         /**
          * The app manager injects the token in this node
          */
+
         this.holder = getSelf();
         // inform all the neighbours
         this.neighbours.forEach((n) -> {
@@ -252,42 +263,53 @@ public class Node extends AbstractActor {
          */
         if (!this.using && !this.recovery) {
             System.out.println("Node " + this.id + " has failed and now is down.");
+            this.down = true;
 
-            try {
-                Thread.sleep(this.downTime);
-            } catch (InterruptedException ex) {
-                System.err.println("Something went wrong with the sleep of node " + this.id);
-            }
-            System.out.println("Node " + this.id + " has restarted.");
+            //try {
+            //    Thread.sleep(this.downTime);
+            //} catch (InterruptedException ex) {
+            //    System.err.println("Something went wrong with the sleep of node " + this.id);
+            //}
             //simulating the loss of data.
             this.holder = null;
             this.request_q.clear();
             this.asked = false;
 
-            this.recovery = true;
-            this.recoveryProcedure();
-            this.assignPriviledge();
-            this.makeRequest();
+            this.system.scheduler().scheduleOnce(Duration.create(1000, TimeUnit.MILLISECONDS), new Runnable() {
+                @Override
+                public void run() {
+                    getSelf().tell(new RecoveryWait(), ActorRef.noSender());
+                }
+            }, system.dispatcher());
         }
     }
 
-    private void recoveryProcedure() {
+    private void recoveryStart(RecoveryWait msg) {
+        this.down = false;
+        this.recovery = true;
+        System.out.println("Node " + this.id + " has restarted.");
+        System.out.println("Node " + this.id + " has started the recovery procedure");
+
+        this.system.scheduler().scheduleOnce(Duration.create(1000, TimeUnit.MILLISECONDS), new Runnable() {
+            @Override
+            public void run() {
+                getSelf().tell(new Recovery(), ActorRef.noSender());
+            }
+        }, system.dispatcher());
+    }
+
+    private void recoveryProcedure(Recovery msg) {
         /**
          * The recovery procedure for a failed node. In the end, the node is fully restored
          */
-
-        System.out.println("Node " + this.id + " has started the recovery procedure");
         //delay, to ensure that all the message sent by this node has been received by the other nodes.
-        try {
-            Thread.sleep(this.startRecoveryTime);
-        } catch (InterruptedException ex) {
-            System.err.println("Something went wrong with the sleep of node " + this.id);
-        }
+        //try {
+        //    Thread.sleep(this.startRecoveryTime);
+        //} catch (InterruptedException ex) {
+        //    System.err.println("Something went wrong with the sleep of node " + this.id);
+        //}
 
         //simulating the loss of data.
-        this.holder = null;
-        this.request_q.clear();
-        this.asked = false;
 
         int count = 1;
         LinkedList<Advise> responses = new LinkedList<>();
@@ -341,6 +363,8 @@ public class Node extends AbstractActor {
 
         System.out.println("Node " + this.id + " has terminated with success the recovery procedure. The values of holder, asked and request_q has been correctly inferred.");
         this.recovery = false;
+        this.assignPriviledge();
+        this.makeRequest();
     }
 
     private void adviseMessage(Restart msg) {
@@ -366,7 +390,8 @@ public class Node extends AbstractActor {
                 .match(Spread.class, this::getHolderInformation)
                 .match(Status.class, this::provideStatus)
                 .match(Fail.class, this::simulateFailure)
-                //.match(Name.class, this::answerName)
+                .match(Recovery.class, this::recoveryProcedure)
+                .match(RecoveryWait.class, this::recoveryStart)
                 .match(Restart.class, this::adviseMessage)
                 .build();
     }

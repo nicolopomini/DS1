@@ -43,6 +43,12 @@ public class Message {
     // message to make a node fail
     public static class Fail implements Serializable {}
 
+    // start the recovery procedure
+    public static class RecoveryWait implements Serializable {}
+
+    //complete recovery procedure
+    public static class Recovery implements Serializable {}
+
     // message to ask for the ok in restarting the node
     public static class Restart implements Serializable {}
 
