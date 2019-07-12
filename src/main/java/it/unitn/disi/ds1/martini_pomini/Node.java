@@ -7,7 +7,6 @@ package it.unitn.disi.ds1.martini_pomini;
 import akka.actor.AbstractActor;
 import akka.actor.ActorSystem;
 import akka.actor.ActorRef;
-import akka.actor.Props;
 import it.unitn.disi.ds1.martini_pomini.Message.Enter;
 import it.unitn.disi.ds1.martini_pomini.Message.Inject;
 import it.unitn.disi.ds1.martini_pomini.Message.Priviledge;
@@ -180,7 +179,6 @@ public class Node extends AbstractActor {
          * the sender is added in the queue
          * Again, due to the conditions, only one on the two methods will be effectively executed
          */
-<<<<<<< HEAD
         if (!this.down) {
             this.request_q.add(getSender());    //non sono sicuro che funzioni
             String print = "Node " + this.id + " queue contains #" + this.request_q.size() + "\n";
@@ -190,15 +188,6 @@ public class Node extends AbstractActor {
                 for (ActorRef element : this.request_q) {
                     print += "\t\t" + element + "\n";
                 }
-=======
-        this.request_q.add(getSender());    //non sono sicuro che funzioni
-        String print = "Node " + this.id + " queue length: #" + this.request_q.size() + ".\n";
-
-        if (this.request_q.size() > 0) {
-            print += "\tElements in the queue: \n";
-            for (ActorRef element : this.request_q) {
-                print += "\t\t" + element + "\n";
->>>>>>> 2983aebdfdacbf0470fa4f72e94e1169483b4968
             }
             System.out.print(print);
             this.assignPriviledge();
