@@ -15,7 +15,7 @@ import java.util.*;
  */
 public class Message {
     // Message to send the token to a node
-    public static class Priviledge implements Serializable {}
+    public static class Privilege implements Serializable {}
     
     // Message to request the token
     public static class Request implements Serializable {}

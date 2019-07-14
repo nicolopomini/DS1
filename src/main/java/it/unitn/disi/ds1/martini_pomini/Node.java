@@ -9,7 +9,7 @@ import akka.actor.ActorSystem;
 import akka.actor.ActorRef;
 import it.unitn.disi.ds1.martini_pomini.Message.Enter;
 import it.unitn.disi.ds1.martini_pomini.Message.Inject;
-import it.unitn.disi.ds1.martini_pomini.Message.Priviledge;
+import it.unitn.disi.ds1.martini_pomini.Message.Privilege;
 import it.unitn.disi.ds1.martini_pomini.Message.Request;
 import it.unitn.disi.ds1.martini_pomini.Message.Spread;
 import it.unitn.disi.ds1.martini_pomini.Message.Startup;
@@ -102,6 +102,7 @@ public class Node extends AbstractActor {
     /*----------------------NODE'S INTERNAL LOGIC-----------------------------*/
     
     private void doCriticalSection() {
+        assert (!this.down && !this.recovery);
         System.out.println("Node " + this.id + " enters the critical section");
         try {
             Thread.sleep(this.minCSTime + this.random.nextInt(this.maxCSTime - this.minCSTime));
@@ -111,12 +112,12 @@ public class Node extends AbstractActor {
         System.out.println("Node " + this.id + " exits the critical section");
     }
     
-    private void assignPriviledge() {
+    private void assignPrivilege() {
         /**
-         * Method to send a priviledge message to the node in the head of the queue
+         * Method to send a privilege message to the node in the head of the queue
          * The node must be the holder of the token
          */
-        if (!this.recovery) {
+        if (!this.recovery && !this.down) {
             if(this.holder.equals(getSelf()) && !this.using && !this.request_q.isEmpty()) {
                 this.holder = this.request_q.poll();
                 this.asked = false;
@@ -134,7 +135,7 @@ public class Node extends AbstractActor {
                         //e.printStackTrace();
                         System.out.println("Node " + this.id + " is assigning privilege to node " + this.holder);
                     }
-                    this.holder.tell(new Priviledge(), getSelf());
+                    this.holder.tell(new Privilege(), getSelf());
                 }
             }
         }
@@ -144,7 +145,7 @@ public class Node extends AbstractActor {
         /**
          * Method to request the token
          */
-        if (!this.recovery) {
+        if (!this.recovery && !this.down) {
             if (!this.holder.equals(getSelf()) && !this.request_q.isEmpty() && !this.asked) {
                 try {
                     //System.out.println("Node " + this.id + " is making a request to node " + Await.result(ask(this.holder,new Name(),1000),Duration.create(1000, TimeUnit.MILLISECONDS)));
@@ -168,8 +169,9 @@ public class Node extends AbstractActor {
          * Otherwise, a request is sent
          * Due to the conditions, only one on the two methods will be effectively executed
          */
+        assert (!this.down && !this.recovery);
         this.request_q.add(getSelf());
-        this.assignPriviledge();
+        this.assignPrivilege();
         this.makeRequest();
     }
     
@@ -190,18 +192,18 @@ public class Node extends AbstractActor {
                 }
             }
             System.out.print(print);
-            this.assignPriviledge();
+            this.assignPrivilege();
             this.makeRequest();
         }
     }
     
-    private void handlePriviledgeMessage(Priviledge msg) {
+    private void handlePriviledgeMessage(Privilege msg) {
         /**
          * The node becomes the holder
          */
         if (!this.down) {
             this.holder = getSelf();
-            this.assignPriviledge();
+            this.assignPrivilege();
             this.makeRequest();
         }
     }
@@ -210,8 +212,9 @@ public class Node extends AbstractActor {
         /**
          * The node exits the CS. The priviledge is passed to another node
          */
+        assert (this.using && !this.down && !this.recovery);
         this.using = false;
-        this.assignPriviledge();
+        this.assignPrivilege();
         this.makeRequest();
     }
 
@@ -263,18 +266,11 @@ public class Node extends AbstractActor {
         if (!this.using && !this.recovery) {
             System.out.println("Node " + this.id + " has failed and now is down.");
             this.down = true;
-
-            //try {
-            //    Thread.sleep(this.downTime);
-            //} catch (InterruptedException ex) {
-            //    System.err.println("Something went wrong with the sleep of node " + this.id);
-            //}
             //simulating the loss of data.
             this.holder = null;
             this.request_q.clear();
             this.asked = false;
-
-            this.system.scheduler().scheduleOnce(Duration.create(1000, TimeUnit.MILLISECONDS), new Runnable() {
+            this.system.scheduler().scheduleOnce(Duration.create(this.downTime, TimeUnit.MILLISECONDS), new Runnable() {
                 @Override
                 public void run() {
                     getSelf().tell(new RecoveryWait(), ActorRef.noSender());
@@ -289,7 +285,7 @@ public class Node extends AbstractActor {
         System.out.println("Node " + this.id + " has restarted.");
         System.out.println("Node " + this.id + " has started the recovery procedure");
 
-        this.system.scheduler().scheduleOnce(Duration.create(1000, TimeUnit.MILLISECONDS), new Runnable() {
+        this.system.scheduler().scheduleOnce(Duration.create(this.startRecoveryTime, TimeUnit.MILLISECONDS), new Runnable() {
             @Override
             public void run() {
                 getSelf().tell(new Recovery(), ActorRef.noSender());
@@ -301,15 +297,6 @@ public class Node extends AbstractActor {
         /**
          * The recovery procedure for a failed node. In the end, the node is fully restored
          */
-        //delay, to ensure that all the message sent by this node has been received by the other nodes.
-        //try {
-        //    Thread.sleep(this.startRecoveryTime);
-        //} catch (InterruptedException ex) {
-        //    System.err.println("Something went wrong with the sleep of node " + this.id);
-        //}
-
-        //simulating the loss of data.
-
         int count = 1;
         LinkedList<Advise> responses = new LinkedList<>();
 
@@ -362,7 +349,7 @@ public class Node extends AbstractActor {
 
         System.out.println("Node " + this.id + " has terminated with success the recovery procedure. The values of holder, asked and request_q has been correctly inferred.");
         this.recovery = false;
-        this.assignPriviledge();
+        this.assignPrivilege();
         this.makeRequest();
     }
 
@@ -381,7 +368,7 @@ public class Node extends AbstractActor {
     @Override
     public Receive createReceive() {
         return receiveBuilder()
-                .match(Priviledge.class, this::handlePriviledgeMessage)
+                .match(Privilege.class, this::handlePriviledgeMessage)
                 .match(Request.class, this::handleRequestMessage)
                 .match(Enter.class, this::enterCS)
                 .match(Startup.class, this::handleStartup)
