@@ -22,7 +22,10 @@ public class Message {
     
     // Message to request a node to enter the CS
     public static class Enter implements Serializable {}
-    
+
+    // Message to request a node to exit the CS
+    public static class ExitCS implements Serializable {}
+
     // Start message that informs every participant about its neighbours
     public static class Startup implements Serializable {
         public final List<ActorRef> neighbours;   // an array of neighbours members

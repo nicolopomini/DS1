@@ -8,6 +8,7 @@ import akka.actor.AbstractActor;
 import akka.actor.ActorSystem;
 import akka.actor.ActorRef;
 import it.unitn.disi.ds1.martini_pomini.Message.Enter;
+import it.unitn.disi.ds1.martini_pomini.Message.ExitCS;
 import it.unitn.disi.ds1.martini_pomini.Message.Inject;
 import it.unitn.disi.ds1.martini_pomini.Message.Privilege;
 import it.unitn.disi.ds1.martini_pomini.Message.Request;
@@ -104,12 +105,12 @@ public class Node extends AbstractActor {
     private void doCriticalSection() {
         assert (!this.down && !this.recovery);
         System.out.println("Node " + this.id + " enters the critical section");
-        try {
-            Thread.sleep(this.minCSTime + this.random.nextInt(this.maxCSTime - this.minCSTime));
-        } catch (InterruptedException ex) {
-            System.err.println("Something went wrong with the sleep of node " + this.id);
-        }
-        System.out.println("Node " + this.id + " exits the critical section");
+        this.system.scheduler().scheduleOnce(Duration.create(this.minCSTime + this.random.nextInt(this.maxCSTime - this.minCSTime), TimeUnit.MILLISECONDS), new Runnable() {
+            @Override
+            public void run() {
+                getSelf().tell(new ExitCS(), ActorRef.noSender());
+            }
+        }, system.dispatcher());
     }
     
     private void assignPrivilege() {
@@ -124,7 +125,6 @@ public class Node extends AbstractActor {
                 if (this.holder.equals(getSelf())) {
                     this.using = true;
                     this.doCriticalSection();
-                    this.exitCS();
                 }
                 else {
                     // send priviledge to holder
@@ -208,11 +208,12 @@ public class Node extends AbstractActor {
         }
     }
     
-    private void exitCS() {
+    private void exitCS(ExitCS msg) {
         /**
          * The node exits the CS. The priviledge is passed to another node
          */
         assert (this.using && !this.down && !this.recovery);
+        System.out.println("Node " + this.id + " exits the critical section");
         this.using = false;
         this.assignPrivilege();
         this.makeRequest();
