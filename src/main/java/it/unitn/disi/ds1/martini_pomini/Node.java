@@ -86,12 +86,6 @@ public class Node extends AbstractActor {
     @Override
     public String toString() {
         int hold = -1;
-        try {
-            //hold = (int) Await.result(ask(this.holder,new Name(),1000),Duration.create(1000, TimeUnit.MILLISECONDS));
-        } catch (Exception e) {
-            //e.printStackTrace;
-        }
-
         return "Node " + this.id + "(Reference:" + getSelf() + ") {\n" +
                 "\tHolder: " + ((hold == -1) ? this.holder : hold) + "\n" +
                 "\t#request queue: " + this.request_q.size() + "\n" +
@@ -250,14 +244,7 @@ public class Node extends AbstractActor {
             if (!n.equals(this.holder))
                 n.tell(new Spread(), getSelf());
         });
-        try {
-            //System.out.println("Node " + this.id + ": token info received from another node. The holder for node " + this.id + " is " + Await.result(ask(this.holder,new Name(),1000),Duration.create(1000, TimeUnit.MILLISECONDS)));
-            System.out.println("Node " + this.id + ": token info received from another node. The holder for node " + this.id + " is " + this.holder);
-        } catch (Exception e) {
-            //e.printStackTrace();
-            System.out.println("Node " + this.id + ": token info received from another node. The holder for node " + this.id + " is " + this.holder);
-
-        }
+        System.out.println("Node " + this.id + ": token info received from another node. The holder for node " + this.id + " is " + this.holder);
     }
 
     private void simulateFailure(Fail msg) {
@@ -306,13 +293,10 @@ public class Node extends AbstractActor {
             for (ActorRef n : this.neighbours) {
                 try {
                     int time = 1000 * count;
-                    //System.out.println("Asking " + n + " to acknoledge the restart operation");
                     responses.add((Advise) Await.result(ask(n, new Restart(), time), Duration.create(time, TimeUnit.MILLISECONDS)));
-                    //System.out.println("Node " + n + " acknoledged the restart operation");
                 } catch (Exception e) {
                     System.out.println("One or more nodes has not answered yet. Retrying for the #" + count + " time");
                     count++;
-                    //e.printStackTrace();
                 }
             }
         }
@@ -329,7 +313,6 @@ public class Node extends AbstractActor {
         LinkedList<ActorRef> privilegedNodeQueue = new LinkedList<>();
         for (Advise resp : responses) {
             if (!resp.holder.equals(getSelf())) {
-                //System.out.println("Resp holder " + resp.holder);
                 allEquals = false;
                 supposedHolder = resp.self;
                 privilegedNodeQueue = (LinkedList<ActorRef>) resp.request_q.clone();
@@ -357,11 +340,7 @@ public class Node extends AbstractActor {
     private void adviseMessage(Restart msg) {
         getSender().tell(new Advise(getSelf(),this.holder, (LinkedList<ActorRef>) this.request_q, this.asked), getSelf());
     }
-    /*
-    private void answerName(Name msg) {
-        getSender().tell(this.id,getSelf());
-    }
-    */
+
     private void provideStatus(Status msg) {
         System.out.println(this.toString());
     }
@@ -380,6 +359,7 @@ public class Node extends AbstractActor {
                 .match(Recovery.class, this::recoveryProcedure)
                 .match(RecoveryWait.class, this::recoveryStart)
                 .match(Restart.class, this::adviseMessage)
+                .match(ExitCS.class, this::exitCS)
                 .build();
     }
 }

@@ -67,6 +67,4 @@ public class Message {
             this.asked = asked;
         }
     }
-
-    //public static class Name implements Serializable {}
 }

@@ -2,22 +2,24 @@
     "topology": [
         {"source": 0, "dest": 1},
         {"source": 0, "dest": 2},
-        {"source": 1, "dest": 3}
+        {"source": 0, "dest": 3},
+        {"source": 0, "dest": 4},
+        {"source": 1, "dest": 5},
+        {"source": 5, "dest": 6},
+        {"source": 5, "dest": 7},
+        {"source": 3, "dest": 8}
     ],
     "min_cs_time": 10,
     "max_cs_time": 1000,
     "node_down_time": 1000,
     "node_start_recovery_time": 1000,
     "commands": [
-        {"command": "i", "arg": "1"},
+        {"command": "i", "arg": "6"},
         {"command": "f", "arg": "0"},
-        {"command": "r", "arg": "3"},
-        {"command": "r", "arg": "2"},
-        {"command": "r", "arg": "3"},
+        {"command": "r", "arg": "5"},
         {"command": "r", "arg": "0"},
-        {"command": "r", "arg": "0"},
-        {"command": "r", "arg": "0"},
-        {"command": "r", "arg": "3"},
-        {"command": "r", "arg": "1"}
+        {"command": "r", "arg": "8"},
+        {"command": "r", "arg": "4"},
+        {"command": "r", "arg": "3"}
     ]
 }
