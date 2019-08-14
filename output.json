@@ -1,0 +1,32 @@
+{
+    "commands": [
+        {
+            "command": "i",
+            "arg": "3"
+        },
+        {
+            "command": "f",
+            "arg": "2"
+        },
+        {
+            "command": "r",
+            "arg": "1"
+        },
+        {
+            "command": "r",
+            "arg": "0"
+        },
+        {
+            "command": "r",
+            "arg": "2"
+        },
+        {
+            "command": "r",
+            "arg": "3"
+        },
+        {
+            "command": "r",
+            "arg": "4"
+        }
+    ]
+}
