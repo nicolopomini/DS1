@@ -23,7 +23,7 @@ commands.append({"command": "f", "arg": str(failed)})
 nodes = [i for i in range(args.n)]
 for i in range(args.commands - 2):
 	if len(nodes) == 0:
-		break
+		nodes = [i for i in range(args.n)]
 	node = random.choice(nodes)
 	commands.append({"command": "r", "arg": str(node)})
 	nodes.remove(node)

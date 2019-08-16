@@ -6,6 +6,46 @@
         },
         {
             "command": "f",
+            "arg": "4"
+        },
+        {
+            "command": "r",
+            "arg": "2"
+        },
+        {
+            "command": "r",
+            "arg": "5"
+        },
+        {
+            "command": "r",
+            "arg": "0"
+        },
+        {
+            "command": "r",
+            "arg": "3"
+        },
+        {
+            "command": "r",
+            "arg": "4"
+        },
+        {
+            "command": "r",
+            "arg": "1"
+        },
+        {
+            "command": "r",
+            "arg": "5"
+        },
+        {
+            "command": "r",
+            "arg": "3"
+        },
+        {
+            "command": "r",
+            "arg": "4"
+        },
+        {
+            "command": "r",
             "arg": "2"
         },
         {
@@ -18,15 +58,27 @@
         },
         {
             "command": "r",
-            "arg": "2"
-        },
-        {
-            "command": "r",
             "arg": "3"
         },
         {
             "command": "r",
+            "arg": "5"
+        },
+        {
+            "command": "r",
+            "arg": "0"
+        },
+        {
+            "command": "r",
             "arg": "4"
+        },
+        {
+            "command": "r",
+            "arg": "1"
+        },
+        {
+            "command": "r",
+            "arg": "2"
         }
     ]
 }
