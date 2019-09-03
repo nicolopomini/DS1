@@ -146,7 +146,7 @@ public class Manager {
                     this.fail(Integer.parseInt(commands.get(++i)));
                     break;
                 default:
-                    System.out.println("This command doesn't exist or is not allowed in scripted mode");
+                    System.out.println("The command \"" + command + "\" doesn't exist or is not allowed in scripted mode");
             }
         }
     }
